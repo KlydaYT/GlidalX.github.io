@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glide - Executor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #bfbfbf;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 80%;
+            max-width: 900px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #2d2d2d;
+            padding: 20px;
+        }
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        p {
+            margin: 5px 0 20px;
+        }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+        .command-section {
+            background-color: #2d2d2d;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: inset 0 0 10px #000;
+        }
+        .monaco-editor {
+            height: 400px;
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: flex-start;
+        }
+        button {
+            background-color: #444;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        button:hover {
+            background-color: #666;
+        }
+        #settings-modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        #settings-modal-content {
+            background-color: #2d2d2d;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 10px;
+        }
+        #settings-modal label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #settings-modal input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+        #settings-modal .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        #settings-modal .close:hover,
+        #settings-modal .close:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Glide</h1>
+            <p>User Interface for Glide, provided by glide.github.io.</p>
+        </header>
+        <div class="status-bar">
+            <span class="status-indicator" id="status-indicator"></span>
+            <span id="status-text">Not Connected</span>
+        </div>
+        <form id="loadstringForm" class="command-section">
+            <div id="editor" class="monaco-editor"></div>
+            <div class="buttons">
+                <button type="submit" id="execute-button">Execute</button>
+                <button type="button" id="clear-button">Clear</button>
+                <button type="button" class="button open-button" onclick="openFile()">Open File</button>
+                <button type="button" id="download-button" onclick="window.location.href='https://cdn.discordapp.com/attachments/1269250902837956658/1270582647478943877/Krampus.rar?ex=66b58b4d&is=66b439cd&hm=b8b6e067a8bf0ccc21f5120f23a0acf70e21a4f2a595388c59995302dc15b8ca&'">Download</button>
+                <button type="button" id="Script-Hub" onclick="location.href='scripthub.html'">ScriptHub</button>
+                <button type="button" id="settings-button">Settings</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="settings-modal">
+        <div id="settings-modal-content">
+            <span class="close">&times;</span>
+            <h2>Settings</h2>
+            <label for="background-url">Background Image URL:</label>
+            <input type="text" id="background-url" placeholder="Enter background image URL">
+            <button id="apply-settings-button">Apply</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/loader.min.js"></script>
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            const editor = monaco.editor.create(document.getElementById('editor'), {
+                value: "-- Solaris on top, copied from krampus, owners: fixtwerty and smerch.",
+                language: 'lua',
+                theme: 'vs-dark',
+                automaticLayout: true
+            });
+
+            
+
+            document.getElementById('clear-button').addEventListener('click', () => {
+                editor.setValue('');
+            });
+
+            document.getElementById('loadstringForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const code = editor.getValue();
+
+                fetch('http://localhost:6969/loadstring', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: code
+                })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+
+            function openFile() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.lua,.txt';
+                input.style.display = 'none';
+                input.addEventListener('change', function() {
+                    const file = input.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            editor.setValue(event.target.result);
+                        };
+                        reader.readAsText(file);
+                    }
+                });
+                document.body.appendChild(input);
+                input.click();
+                document.body.removeChild(input);
+            }
+
+            function checkLocalhost() {
+                fetch('http://localhost:6969/', { mode: 'no-cors' })
+                    .then(response => {
+                        if (response.ok || response.type === 'opaque') {
+                            document.getElementById('status-indicator').style.backgroundColor = 'green';
+                            document.getElementById('status-text').innerText = 'Connected';
+                        } else {
+                            document.getElementById('status-indicator').style.backgroundColor = 'red';
+                            document.getElementById('status-text').innerText = 'Not Connected';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('status-indicator').style.backgroundColor = 'red';
+                        document.getElementById('status-text').innerText = 'Not Connected';
+                    });
+            }
+
+            setInterval(checkLocalhost, 5000);
+            checkLocalhost();
+
+            // Settings modal logic
+            const settingsModal = document.getElementById('settings-modal');
+            const settingsButton = document.getElementById('settings-button');
+            const closeModal = document.getElementsByClassName('close')[0];
+            const applySettingsButton = document.getElementById('apply-settings-button');
+
+            settingsButton.onclick = function() {
+                settingsModal.style.display = 'block';
+            }
+
+            closeModal.onclick = function() {
+                settingsModal.style.display = 'none';
+            }
+
+            window.onclick = function(event) {
+                if (event.target == settingsModal) {
+                    settingsModal.style.display = 'none';
+                }
+            }
+
+            applySettingsButton.onclick = function() {
+                const backgroundUrl = document.getElementById('background-url').value;
+
+                if (backgroundUrl) {
+                    document.body.style.backgroundImage = `url(${backgroundUrl})`;
+                    document.body.style.backgroundSize = 'cover';
+                }
+
+                settingsModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
